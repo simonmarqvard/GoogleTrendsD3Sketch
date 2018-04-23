@@ -1,0 +1,255 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+#chessBoardButton {
+    background-color: orange ; /* Green */
+    border: none;
+    width: 190px;
+      border-radius: 5px;
+    color: white;
+    padding: 16px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    -webkit-transition-duration: 0.4s; /* Safari */
+    transition-duration: 0.4s;
+    cursor: pointer;
+}
+
+
+#chessBoardButton:hover {
+    background-color: lightgreen;
+    color: white;
+}
+
+
+#worldbutton {
+  background-color: orange ; /* Green */
+  border: none;
+  border-radius: 5px;
+  width: 190px;
+  color: white;
+  padding: 16px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  -webkit-transition-duration: 0.4s; /* Safari */
+  transition-duration: 0.4s;
+  cursor: pointer;
+}
+
+
+#worldbutton:hover {
+    background-color: lightgreen;
+    color: white;
+}
+
+#startDate {
+
+  border: 1px solid black;
+  color: black;
+  padding: 16px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: text;
+}
+
+#hiddendiv {
+  visibility: hidden;
+  border: 1px solid black;
+  color: black;
+  padding: 16px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: text;
+}
+
+
+
+
+.title {
+  font-family: 'Oxygen', sans-serif;
+font-size: 35px;
+margin: 0 auto;
+letter-spacing: 4.1px;
+width: 50%;
+height: 50px;
+/* background-color: lightblue; */
+text-align: center;
+padding-top: 10px;
+margin-bottom: 50px;
+border: 5px solid black;
+}
+
+.searchContainer {
+  /* background-color: blue; */
+    width: 100%;
+    height: 150px;
+    text-align: center;
+    margin: 0 auto;
+}
+
+.containerCountry {
+  margin: 0 auto;
+  width: 200px;
+  height: auto;
+  /* background-color: green; */
+  display: inline;
+}
+
+.inputBox {
+  width: 100px;
+}
+
+#worldbox {
+  border: 1px solid black;
+  color: black;
+  padding: 16px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: text;
+}
+
+.containerWorld {
+  margin: 0 auto;
+  width: 200px;
+  height: auto;
+  /* background-color: red; */
+  display: inline;
+}
+
+.wrapper {
+  width: 100%;
+  height: auto;
+  /* background-color: grey; */
+}
+
+
+
+svg {
+  margin-top: 0px;
+  position: relative;
+  left: 58%;
+  -webkit-transform: translateX(-50%);
+  -ms-transform: translateX(-50%);
+  transform: translateX(-50%);
+}
+
+#map {
+  margin: 0 auto;
+  background-color: blue;
+  width: 100px;
+  height: auto;
+  position: center;
+}
+
+
+.graph-holder-wrap {
+  width: 100%;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-holder {
+  /* background-color: orange; */
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+}
+
+.chart {
+  margin-right: 100px;
+  padding-top: 60px;
+  background-color: white;
+  min-width: 500px;
+  padding-left: 100px;
+  width: 50%;
+}
+
+.world-graph {
+  /* background-color: purple; */
+  width:50%;
+  min-width: 500px;
+}
+
+
+
+.searchline {
+  display: flex;
+  flex-direction: row;
+  font-family: 'Tajawal', sans-serif;
+  width: 100%;
+  background-color: black;
+  color: white;
+  letter-spacing: 3px;
+  text-align: center;
+  margin-top: 25px;
+  vertical-align: middle;
+  margin-bottom: 35px;
+}
+
+.selectedCountry {
+  font-family: 'Tajawal', sans-serif;
+  padding-top: 6px;
+  padding-bottom: 2px;
+  background-color: black;
+  color: white;
+  letter-spacing: 3px;
+  text-align: center;
+  vertical-align: middle;
+  width: 50%;
+}
+
+.selectedSearchWord {
+  font-family: 'Tajawal', sans-serif;
+  padding-top: 6px;
+  padding-bottom: 2px;
+  background-color: black;
+  color: white;
+  color: white;
+  letter-spacing: 3px;
+  text-align: center;
+  vertical-align: middle;
+  width: 50%;
+}
+
+.info {
+  padding: 10px;
+  margin: 0 auto;
+  border-radius: 15px;
+  font-family: 'Tajawal', sans-serif;
+  width: 300px;
+  height: 200px;
+  background-color: black;
+  display: block;
+  color: white;
+}
+
+#inputBox {
+
+    border: 1px solid black;
+    color: black;
+    padding: 16px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: text;
+}

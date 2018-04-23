@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script src="p5.min.js"></script>
+  <script src="p5.dom.min.js"></script>
+  <script src="p5.sound.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+
+  <!-- jquery -->
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+
+  <!-- Chart.js   -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script>
+
+  <!-- d3 && topojson -->
+  <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/topojson/1.6.9/topojson.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.8/datamaps.all.js"></script>
+ <link href="https://fonts.googleapis.com/css?family=Oxygen:700" rel="stylesheet">
+ <link href="https://fonts.googleapis.com/css?family=Tajawal" rel="stylesheet">
+
+ <div class= "graph-holder-wrap">
+  <div class="title">DISCOVERING TRENDS</div>
+  <div class ="graph-holder">
+    <div class= "world-graph"></div>
+    <div class= "chart">
+      <div class = "info"> Choose a country. Type a word in the searchfield. Choose how far back you want to trace the word. Press search. </div>
+      <canvas id="myChart"></canvas>
+    </div>
+   </div>
+     <div class = "searchline">
+     <div class= "selectedCountry">Country</div>
+     <div class = "selectedSearchWord"> SearchWord </div>
+   </div>
+</div>
+
+    <script>
+
+    /***** ALL MATH FUNCTIONS ****/
+
+var to_radians = Math.PI / 180;
+var to_degrees = 180 / Math.PI;
+
+// Helper function: cross product of two vectors v0&v1
+function cross(v0, v1) {
+  return [v0[1] * v1[2] - v0[2] * v1[1], v0[2] * v1[0] - v0[0] * v1[2], v0[0] * v1[1] - v0[1] * v1[0]];
+}
+
+//Helper function: dot product of two vectors v0&v1
+function dot(v0, v1) {
+  for (var i = 0, sum = 0; v0.length > i; ++i) sum += v0[i] * v1[i];
+  return sum;
+}
+
+// Helper function:
+// This function converts a [lon, lat] coordinates into a [x,y,z] coordinate
+// the [x, y, z] is Cartesian, with origin at lon/lat (0,0) center of the earth
+function lonlat2xyz( coord ){
+
+var lon = coord[0] * to_radians;
+var lat = coord[1] * to_radians;
+
+var x = Math.cos(lat) * Math.cos(lon);
+
+var y = Math.cos(lat) * Math.sin(lon);
+
+var z = Math.sin(lat);
+
+return [x, y, z];
+}
+
+// Helper function:
+// This function computes a quaternion representation for the rotation between to vectors
+// https://en.wikipedia.org/wiki/Rotation_formalisms_in_three_dimensions#Euler_angles_.E2.86.94_Quaternion
+function quaternion(v0, v1) {
+
+if (v0 && v1) {
+
+    var w = cross(v0, v1),  // vector pendicular to v0 & v1
+        w_len = Math.sqrt(dot(w, w)); // length of w
+
+      if (w_len == 0)
+        return;
+
+      var theta = .5 * Math.acos(Math.max(-1, Math.min(1, dot(v0, v1)))),
+
+        qi  = w[2] * Math.sin(theta) / w_len;
+        qj  = - w[1] * Math.sin(theta) / w_len;
+        qk  = w[0]* Math.sin(theta) / w_len;
+        qr  = Math.cos(theta);
+
+    return theta && [qr, qi, qj, qk];
+}
+}
+
+// Helper function:
+// This functions converts euler angles to quaternion
+// https://en.wikipedia.org/wiki/Rotation_formalisms_in_three_dimensions#Euler_angles_.E2.86.94_Quaternion
+function euler2quat(e) {
+
+if(!e) return;
+
+  var roll = .5 * e[0] * to_radians,
+      pitch = .5 * e[1] * to_radians,
+      yaw = .5 * e[2] * to_radians,
+
+      sr = Math.sin(roll),
+      cr = Math.cos(roll),
+      sp = Math.sin(pitch),
+      cp = Math.cos(pitch),
+      sy = Math.sin(yaw),
+      cy = Math.cos(yaw),
+
+      qi = sr*cp*cy - cr*sp*sy,
+      qj = cr*sp*cy + sr*cp*sy,
+      qk = cr*cp*sy - sr*sp*cy,
+      qr = cr*cp*cy + sr*sp*sy;
+
+  return [qr, qi, qj, qk];
+}
+
+// This functions computes a quaternion multiply
+// Geometrically, it means combining two quant rotations
+// http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/arithmetic/index.htm
+function quatMultiply(q1, q2) {
+if(!q1 || !q2) return;
+
+  var a = q1[0],
+      b = q1[1],
+      c = q1[2],
+      d = q1[3],
+      e = q2[0],
+      f = q2[1],
+      g = q2[2],
+      h = q2[3];
+
+  return [
+   a*e - b*f - c*g - d*h,
+   b*e + a*f + c*h - d*g,
+   a*g - b*h + c*e + d*f,
+   a*h + b*g - c*f + d*e];
+
+}
+
+// This function computes quaternion to euler angles
+// https://en.wikipedia.org/wiki/Rotation_formalisms_in_three_dimensions#Euler_angles_.E2.86.94_Quaternion
+function quat2euler(t){
+
+if(!t) return;
+
+return [ Math.atan2(2 * (t[0] * t[1] + t[2] * t[3]), 1 - 2 * (t[1] * t[1] + t[2] * t[2])) * to_degrees,
+     Math.asin(Math.max(-1, Math.min(1, 2 * (t[0] * t[2] - t[3] * t[1])))) * to_degrees,
+     Math.atan2(2 * (t[0] * t[3] + t[1] * t[2]), 1 - 2 * (t[2] * t[2] + t[3] * t[3])) * to_degrees
+    ]
+}
+
+/*  This function computes the euler angles when given two vectors, and a rotation
+This is really the only math function called with d3 code.
+
+v0 - starting pos in lon/lat, commonly obtained by projection.invert
+v1 - ending pos in lon/lat, commonly obtained by projection.invert
+o0 - the projection rotation in euler angles at starting pos (v0), commonly obtained by projection.rotate
+*/
+
+function eulerAngles(v0, v1, o0) {
+
+/*
+  The math behind this:
+  - first calculate the quaternion rotation between the two vectors, v0 & v1
+  - then multiply this rotation onto the original rotation at v0
+  - finally convert the resulted quat angle back to euler angles for d3 to rotate
+*/
+
+var t = quatMultiply( euler2quat(o0), quaternion(lonlat2xyz(v0), lonlat2xyz(v1) ) );
+return quat2euler(t);
+}
+/**************end of math functions**********************/
+
+
+      var countryid = []
+
+      var width = 700,
+        height = 500;
+
+
+
+      var projection = d3.geo.orthographic()
+        .scale(250)
+        .translate([width / 2, height / 2])
+        .clipAngle(90);
+
+      var path = d3.geo.path()
+        .projection(projection);
+
+
+      // var textLayer = svg.append("g").attr("class", "textLayer");
+
+
+      // var λ = d3.scale.linear()
+      //   .domain([0, width])
+      //   .range([-180, 180]);
+      //
+      // var φ = d3.scale.linear()
+      //   .domain([0, height])
+      //   .range([90, -90]);
+
+      var svg = d3.select(".world-graph").append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+        var drag = d3.behavior.drag()
+          .on('dragstart', dragstarted)
+          .on('drag', dragged);
+
+          svg.call(drag);
+
+          var gpos0, o0;
+
+function dragstarted() {
+  gpos0 = projection.invert(d3.mouse(this));
+  o0 = projection.rotate();
+
+  svg.insert('path')
+  .datum({type: 'point', coordinates: gpos0})
+  .attr('class', 'point')
+  .attr('d', path);
+}
+
+function dragged(){
+
+	var gpos1 = projection.invert(d3.mouse(this));
+
+	o0 = projection.rotate();
+
+	var o1 = eulerAngles(gpos0, gpos1, o0);
+	projection.rotate(o1);
+
+	svg.selectAll(".point")
+	 		.datum({type: "Point", coordinates: gpos1});
+  svg.selectAll("path").attr("d", path);
+
+}
+
+
+      // the solutions should be right here: http://bl.ocks.org/ivyywang/7c94cb5a3accd9913263
+      // let clicked = false;
+      // svg.on("mousedown", function(){
+      //   clicked = true;
+      // });
+      // svg.on("mouseup", function(){
+      //   clicked = false;
+      // });
+      // svg.on("mousemove", function() {
+      //   var p = d3.mouse(this);
+      //   if(clicked){
+      //     projection.rotate([λ(p[0]), φ(p[1])]);
+      //     svg.selectAll("path").attr("d", path);
+      //   }
+      // });
+      let selectedCountry = "DK";
+      let countryCodeData;
+      d3.json("convertfile.json", function(code) {
+        countryCodeData = code;
+      });
+      //wait 200 milliseconds until convertfile is loaded
+      setTimeout(drawWorld, 200);
+      function drawWorld(){
+        d3.json("world.json", function(world) {
+          var geojson = topojson.feature(world, world.objects.countries);
+          // adding the country code to our data
+
+          // map i like forEach but its lets us manipulate each element in an array
+          // foreach lets us iterate over and read the googleValuesSplit
+          // that why we need to retun where is say "#W()@U#OIWUJKNWJ!IW"
+
+          //map function creates new array calling a function on each element
+        //  console.log(geojson.features)
+          geojson.features = geojson.features.map(function(d){
+              //iterate through convertfile
+              countryCodeData.forEach(function(element){
+                //if id from world file is equal to country code from convertfile
+                //change worlds countrycode to two-letter code
+                if(d.id == element["country-code"]){
+                  d.countryCode = element["alpha-2"];
+                }
+              })
+              return d; // #W()@U#OIWUJKNWJ!IW
+          });
+          let countryFull
+          let countries = svg.selectAll("path")
+            .data(geojson.features)
+            .enter().append("path")
+            .attr("d", path)
+            .attr("fill", function(d){
+              if(d.countryCode == selectedCountry){
+                return "orange";
+              }else{
+                return "black";
+              }
+            })
+            .on("click", function(d) {
+              selectedCountry = d.countryCode;
+
+              for (var i= 0; i < countryCodeData.length; i++) {
+              if (selectedCountry == countryCodeData[i]["alpha-2"]) {
+                countryFull = countryCodeData[i].name
+              }
+            }
+            $(".selectedCountry").empty();
+            $(".selectedCountry").append(countryFull)
+
+
+              countries.transition().duration(500).attr("fill", function(dd){
+                if(dd.countryCode == selectedCountry){
+                  return "orange";
+                }else{
+                  return "black";
+                }
+              })
+
+              // console.log(d.countryCode);
+            })
+        });
+      }
+
+
+
+
+      // d3.json("world.json", function(error, world) {
+      //   // if (error) throw error;
+      //   console.log("full data", error)
+      //
+      //   var geojson = topojson.feature(world, world.objects.countries);
+      //   svg.selectAll("path")
+      //     .data(geojson.features)
+      //     .enter().append("path")
+      //     .attr("d", path)
+      //     .on("mouseover", function(d) {
+      //
+      //       // d3.json("convertfile.json", function(error, code) {
+      //       //   if (error) throw error;
+      //       //   for (var i = 0; i < world.objects.countries.geometries.length; i++) {
+      //       //     for (var j = 0; j < 177; j++) {
+      //       //       if (d.id === code[j]["country-code"]) {
+      //       //         world.objects.countries.geometries[i].id = code[j]["alpha-2"]
+      //       //       }
+      //       //     }
+      //       //   }
+      //       //   console.log(d)
+      //       // })
+      //     })
+      //   })
+
+
+      //  console.log("countryid" + countryid)
+
+
+
+
+      // textLayer.selectAll("text")
+      //   .data(topojson.object(world, world.objects.countries))
+      //   .enter()
+      //   .append(text)
+      //   .attr("class",function(d,i) {
+      //     condole.log(path.centroid(d))
+      //     return "countryid" + d.world.objects.countries
+      //   });
+
+
+
+
+
+
+    </script>
+    <script src="sketch.js"></script>
+    <script>
+      $("document").ready(function() {
+        initialize();
+      });
+    </script>
+
+
+
+
+
+
+
+    <!-- <script>
+    // example data from server
+    var series = [
+        ["BLR",75],["BLZ",43],["RUS",50],["RWA",88],["SRB",21],["TLS",43],
+        ["REU",21],["TKM",19],["TJK",60],["ROU",4],["TKL",44],["GNB",38],
+        ["GUM",67],["GTM",2],["SGS",95],["GRC",60],["GNQ",57],["GLP",53],
+        ["JPN",59],["GUY",24],["GGY",4],["GUF",21],["GEO",42],["GRD",65],
+        ["GBR",14],["GAB",47],["SLV",15],["GIN",19],["GMB",63],["GRL",56],
+        ["ERI",57],["MNE",93],["MDA",39],["MDG",71],["MAF",16],["MAR",8],
+        ["MCO",25],["UZB",81],["MMR",21],["MLI",95],["MAC",33],["MNG",93],
+        ["MHL",15],["MKD",52],["MUS",19],["MLT",69],["MWI",37],["MDV",44],
+        ["MTQ",13],["MNP",21],["MSR",89],["MRT",20],["IMN",72],["UGA",59],
+        ["TZA",62],["MYS",75],["MEX",80],["ISR",77],["FRA",54],["IOT",56],
+        ["SHN",91],["FIN",51],["FJI",22],["FLK",4],["FSM",69],["FRO",70],
+        ["NIC",66],["NLD",53],["NOR",7],["NAM",63],["VUT",15],["NCL",66],
+        ["NER",34],["NFK",33],["NGA",45],["NZL",96],["NPL",21],["NRU",13],
+        ["NIU",6],["COK",19],["XKX",32],["CIV",27],["CHE",65],["COL",64],
+        ["CHN",16],["CMR",70],["CHL",15],["CCK",85],["CAN",76],["COG",20],
+        ["CAF",93],["COD",36],["CZE",77],["CYP",65],["CXR",14],["CRI",31],
+        ["CUW",67],["CPV",63],["CUB",40],["SWZ",58],["SYR",96],["SXM",31]];
+
+
+    // Datamaps expect data in format:
+    // { "USA": { "fillColor": "#42a844", numberOfWhatever: 75},
+    //   "FRA": { "fillColor": "#8dc386", numberOfWhatever: 43 } }
+    var dataset = {};
+
+    // We need to colorize every country based on "numberOfWhatever"
+    // colors should be uniq for every value.
+    // For this purpose we create palette(using min/max series-value)
+    var onlyValues = series.map(function(obj){ return obj[1]; });
+    var minValue = Math.min.apply(null, onlyValues),
+            maxValue = Math.max.apply(null, onlyValues);
+
+    // create color palette function
+    // color can be whatever you wish
+    var paletteScale = d3.scale.linear()
+            .domain([minValue,maxValue])
+            .range(["#EFEFFF","#02386F"]); // blue color
+
+    // fill dataset in appropriate format
+    series.forEach(function(item){ //
+        // item example value ["USA", 70]
+        var iso = item[0],
+                value = item[1];
+        dataset[iso] = { numberOfThings: value, fillColor: paletteScale(value) };
+    });
+
+    // render map
+    new Datamap({
+        element: document.getElementById('map'),
+        projection: 'mercator', // big world map
+        // countries don't listed in dataset will be painted with this color
+        fills: { defaultFill: '#F5F5F5' },
+        data: dataset,
+        geographyConfig: {
+            borderColor: '#DEDEDE',
+            highlightBorderWidth: 2,
+            // don't change color on mouse hover
+            highlightFillColor: function(geo) {
+                return geo['fillColor'] || '#F5F5F5';
+            },
+            // only change border
+            highlightBorderColor: '#B7B7B7',
+            // show desired information in tooltip
+            popupTemplate: function(geo, data) {
+                // don't show tooltip if country don't present in dataset
+                if (!data) { return ; }
+                // tooltip content
+                return ['<div class="hoverinfo">',
+                    '<strong>', geo.properties.name, '</strong>',
+                    '<br>Count: <strong>', data.numberOfThings, '</strong>',
+                    '</div>'].join('');
+            }
+        }
+    });
+</script> -->
+
+
+  <div class="wrapper">
+  <div class= "searchContainer">
+  <div class="containerCountry">
+    <input id="inputBox" type="text" placeholder="Type a word" >
+    <input id="startDate" placeholder="StartDate yyyy-mm-dd" value = "2018-01-01" type="text" >
+    <button id="chessBoardButton">Search Country</button>
+    <div class="containerWorld">
+      <div id="map"></div>
+        <input id="hiddendiv" type="text" >
+      <input id="worldbox" type="text" placeholder="Type a word" >
+      <button id="worldbutton">Search World  </button>
+    </div>
+  </div>
+  </div>
+</div>
+
+</body>
+
+</html>

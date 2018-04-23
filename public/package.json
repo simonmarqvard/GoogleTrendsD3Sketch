@@ -1,0 +1,14 @@
+{
+  "name": "mashupfinal",
+  "version": "1.0.0",
+  "description": "",
+  "main": "p5.dom.min.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "simon",
+  "license": "ISC",
+  "dependencies": {
+    "google-trends-api": "^4.6.1"
+  }
+}
