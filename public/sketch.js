@@ -7,6 +7,8 @@ function initialize() {
   searchWorldWord()
 }
 
+
+//Take searchword and date from searchcontainer (chessBoardButton) and use in getdata
 function searchWord() {
   $('#chessBoardButton').click(function() {
     var inputTerm = $('#inputBox').val();
@@ -16,12 +18,13 @@ function searchWord() {
 
     startDate = $('#startDate').val();
     console.log(startDate)
-
+    console.log(selectedCountry)
+    console.log(inputTerm)
     getData(inputTerm);
   })
 }
 
-
+//Take word from global search and use in getworldData
 function searchWorldWord() {
   $('#worldbutton').click(function() {
     var worldinputTerm = $('#worldbox').val();
@@ -31,11 +34,11 @@ function searchWorldWord() {
   })
 }
 
-
+//make ajax call to get data from google trends
 function getData(inputTerm) {
   console.log(selectedCountry);
   $.ajax({
-    //makes request to localhost;2000/trends
+    //makes request to localhost:2000/trends
     url: "/trends/" + inputTerm + "/" + selectedCountry + "/" + startDate,
     type: 'GET',
     dataType: "json",
@@ -43,19 +46,17 @@ function getData(inputTerm) {
       console.log("yikes there's an error" + err);
     },
     success: function(data) {
-      console.log(data);
-      console.log(data.default.timelineData.length)
+      console.log("GETTING DATA");
+      //    console.log(data.default.timelineData.length)
       for (var i = 0; i < data.default.timelineData.length; i++) {
         googleDataValues[i] = data.default.timelineData[i].value[0];
         // console.log(googleValues[i]);
         googleDataDates[i] = data.default.timelineData[i].formattedAxisTime;
         // console.log(googleDates[i]);
       }
-      // let googleDates = googleDates.toString();
-      // let googleValuesSplit = googleValues.split(",");
-      console.log(googleDataDates);
-      console.log(googleDataValues);
+      //use returning values to createChart using chart.js (x: time, y:value)
       createChart(googleDataDates, googleDataValues)
+      console.log(selectedCountry)
     }
   })
 }
@@ -75,19 +76,66 @@ function getWorldData(worldinputTerm) {
     success: function(data) {
       //  console.log(data)
       for (var i = 0; i < data.default.geoMapData.length; i++) {
-        dataToReturn[i] = [{
+        dataToReturn[i] = {
           val: data.default.geoMapData[i].formattedValue,
           geo: data.default.geoMapData[i].geoCode
-        }]
+        }
       }
-      let country = svg.selectAll("path")
-        .attr("fill", "green")
+      console.log(dataToReturn)
+      console.log(countries);
+      dataToReturn = dataToReturn.filter(function(d) {
+        //d.val[0] because it is in an array
+        return d.val[0].length > 0;
+      })
+      let max = d3.max(dataToReturn, function(d) {
+        return Number(d.val[0]);
+      });
+      console.log(max);
+      // let redScale = d3.scaleLinear
+
+      //assign graded color based value
+      var color = d3.scale.linear()
+        .domain([0, max])
+        .range(["white", "orange"]);
+
+
+      // let country = svg.selectAll("path")
+      countries
+        .attr("fill", function(d) {
+          // dataToReturn.forEach(function(freshD) {
+          for (let i = 0; i < dataToReturn.length; i++) {
+            let freshD = dataToReturn[i];
+            // console.log(d.countryCode)
+            // console.log(freshD.geo)
+            // console.log(d.countryCode == freshD.geo)
+            // console.log("---")
+            if (d.countryCode == freshD.geo) {
+              // console.log(color(freshD.val[0]));
+              return color(Number(freshD.val[0]));
+            }
+          }
+
+        })
+      //     dataToReturn.forEach(function(freshD) {
+      //       console.log(freshD)
+      //       // if (d.countryCode == freshD.geo) {
+      //       //   //   console.log(freshD.val[0]);
+      //       //   //   return "red";
+      //       //   // }
+      //       //
+      //       // })
+      //
+      //
+      //     });
+      //   });
     }
-  });
+
+
+  })
 }
 
 
-
+//Create Chart using values from google API
 function createChart(xData, yData) {
 
   $(".chart").empty();

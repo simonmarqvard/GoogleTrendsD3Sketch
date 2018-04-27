@@ -28,7 +28,7 @@
   <div class ="graph-holder">
     <div class= "world-graph"></div>
     <div class= "chart">
-      <div class = "info"> Choose a country. Type a word in the searchfield. Choose how far back you want to trace the word. Press search. </div>
+      <div class = "info"> Choose a country <br><br> Type a word in the searchfield.<br><br> Choose a search time range<br><br> Press search. </div>
       <canvas id="myChart"></canvas>
     </div>
    </div>
@@ -40,7 +40,9 @@
 
     <script>
 
-    /***** ALL MATH FUNCTIONS ****/
+/***** ALL MATH FUNCTIONS ****/
+// for rotation of world///////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 var to_radians = Math.PI / 180;
 var to_degrees = 180 / Math.PI;
@@ -178,56 +180,45 @@ function eulerAngles(v0, v1, o0) {
 var t = quatMultiply( euler2quat(o0), quaternion(lonlat2xyz(v0), lonlat2xyz(v1) ) );
 return quat2euler(t);
 }
-/**************end of math functions**********************/
+/**********************  END of math functions for rotation **********************/
 
 
-      var countryid = []
+var countryid = []
 
-      var width = 700,
-        height = 500;
+var width = 700,
+height = 500;
 
+let countries;
 
+var projection = d3.geo.orthographic()
+  .scale(250)
+  .translate([width / 2, height / 2])
+  .clipAngle(90);
 
-      var projection = d3.geo.orthographic()
-        .scale(250)
-        .translate([width / 2, height / 2])
-        .clipAngle(90);
-
-      var path = d3.geo.path()
-        .projection(projection);
-
-
-      // var textLayer = svg.append("g").attr("class", "textLayer");
+var path = d3.geo.path()
+  .projection(projection);
 
 
-      // var λ = d3.scale.linear()
-      //   .domain([0, width])
-      //   .range([-180, 180]);
-      //
-      // var φ = d3.scale.linear()
-      //   .domain([0, height])
-      //   .range([90, -90]);
+var svg = d3.select(".world-graph").append("svg")
+  .attr("width", width)
+  .attr("height", height);
 
-      var svg = d3.select(".world-graph").append("svg")
-        .attr("width", width)
-        .attr("height", height);
+var drag = d3.behavior.drag()
+  .on('dragstart', dragstarted)
+  .on('drag', dragged);
 
-        var drag = d3.behavior.drag()
-          .on('dragstart', dragstarted)
-          .on('drag', dragged);
+svg.call(drag);
 
-          svg.call(drag);
-
-          var gpos0, o0;
+var gpos0, o0;
 
 function dragstarted() {
-  gpos0 = projection.invert(d3.mouse(this));
-  o0 = projection.rotate();
+    gpos0 = projection.invert(d3.mouse(this));
+    o0 = projection.rotate();
 
-  svg.insert('path')
-  .datum({type: 'point', coordinates: gpos0})
-  .attr('class', 'point')
-  .attr('d', path);
+    svg.insert('path')
+      .datum({type: 'point', coordinates: gpos0})
+      .attr('class', 'point')
+      .attr('d', path);
 }
 
 function dragged(){
@@ -241,136 +232,75 @@ function dragged(){
 
 	svg.selectAll(".point")
 	 		.datum({type: "Point", coordinates: gpos1});
-  svg.selectAll("path").attr("d", path);
 
+  svg.selectAll("path").attr("d", path);
 }
 
 
-      // the solutions should be right here: http://bl.ocks.org/ivyywang/7c94cb5a3accd9913263
-      // let clicked = false;
-      // svg.on("mousedown", function(){
-      //   clicked = true;
-      // });
-      // svg.on("mouseup", function(){
-      //   clicked = false;
-      // });
-      // svg.on("mousemove", function() {
-      //   var p = d3.mouse(this);
-      //   if(clicked){
-      //     projection.rotate([λ(p[0]), φ(p[1])]);
-      //     svg.selectAll("path").attr("d", path);
-      //   }
-      // });
-      let selectedCountry = "DK";
-      let countryCodeData;
-      d3.json("convertfile.json", function(code) {
-        countryCodeData = code;
-      });
-      //wait 200 milliseconds until convertfile is loaded
-      setTimeout(drawWorld, 200);
-      function drawWorld(){
-        d3.json("world.json", function(world) {
-          var geojson = topojson.feature(world, world.objects.countries);
-          // adding the country code to our data
+let selectedCountry = "DK";
+let countryCodeData;
+d3.json("convertfile.json", function(code) {
+  countryCodeData = code;
+});
+//wait 200 milliseconds until convertfile is loaded
+setTimeout(drawWorld, 200);
+function drawWorld(){
+  d3.json("world.json", function(world) {
+    var geojson = topojson.feature(world, world.objects.countries);
+// adding the country code to our data
 
-          // map i like forEach but its lets us manipulate each element in an array
-          // foreach lets us iterate over and read the googleValuesSplit
-          // that why we need to retun where is say "#W()@U#OIWUJKNWJ!IW"
+// map i like forEach but its lets us manipulate each element in an array
+// foreach lets us iterate over and read the googleValuesSplit
+// that why we need to retun where is say "#W()@U#OIWUJKNWJ!IW"
 
-          //map function creates new array calling a function on each element
-        //  console.log(geojson.features)
-          geojson.features = geojson.features.map(function(d){
-              //iterate through convertfile
-              countryCodeData.forEach(function(element){
-                //if id from world file is equal to country code from convertfile
-                //change worlds countrycode to two-letter code
-                if(d.id == element["country-code"]){
-                  d.countryCode = element["alpha-2"];
-                }
-              })
-              return d; // #W()@U#OIWUJKNWJ!IW
-          });
-          let countryFull
-          let countries = svg.selectAll("path")
-            .data(geojson.features)
-            .enter().append("path")
-            .attr("d", path)
-            .attr("fill", function(d){
-              if(d.countryCode == selectedCountry){
-                return "orange";
-              }else{
-                return "black";
-              }
-            })
-            .on("click", function(d) {
-              selectedCountry = d.countryCode;
+//map function creates new array calling a function on each element
+//  console.log(geojson.features)
+    geojson.features = geojson.features.map(function(d){
+//iterate through convertfile
+      countryCodeData.forEach(function(element){
+//if id from world file is equal to country code from convertfile
+//change worlds countrycode to two-letter code
+        if(d.id == element["country-code"]){
+          d.countryCode = element["alpha-2"];
+          }
+        })
+      return d; // #W()@U#OIWUJKNWJ!IW
+    });
+    let countryFull
+    countries = svg.selectAll("path")
+      .data(geojson.features)
+      .enter().append("path")
+      .attr("d", path)
+      .attr("fill", function(d){
+        if(d.countryCode == selectedCountry){
+          return "orange";
+        } else {
+          return "black";
+        }
+      })
+      .on("click", function(d) {
+        selectedCountry = d.countryCode;
 
-              for (var i= 0; i < countryCodeData.length; i++) {
-              if (selectedCountry == countryCodeData[i]["alpha-2"]) {
-                countryFull = countryCodeData[i].name
-              }
-            }
-            $(".selectedCountry").empty();
-            $(".selectedCountry").append(countryFull)
+        for (var i= 0; i < countryCodeData.length; i++) {
+          if (selectedCountry == countryCodeData[i]["alpha-2"]) {
+            countryFull = countryCodeData[i].name
+          }
+        }
+        $(".selectedCountry").empty();
+        $(".selectedCountry").append(countryFull)
 
 
-              countries.transition().duration(500).attr("fill", function(dd){
-                if(dd.countryCode == selectedCountry){
-                  return "orange";
-                }else{
-                  return "black";
-                }
-              })
-
-              // console.log(d.countryCode);
-            })
-        });
-      }
-
-
-
-
-      // d3.json("world.json", function(error, world) {
-      //   // if (error) throw error;
-      //   console.log("full data", error)
-      //
-      //   var geojson = topojson.feature(world, world.objects.countries);
-      //   svg.selectAll("path")
-      //     .data(geojson.features)
-      //     .enter().append("path")
-      //     .attr("d", path)
-      //     .on("mouseover", function(d) {
-      //
-      //       // d3.json("convertfile.json", function(error, code) {
-      //       //   if (error) throw error;
-      //       //   for (var i = 0; i < world.objects.countries.geometries.length; i++) {
-      //       //     for (var j = 0; j < 177; j++) {
-      //       //       if (d.id === code[j]["country-code"]) {
-      //       //         world.objects.countries.geometries[i].id = code[j]["alpha-2"]
-      //       //       }
-      //       //     }
-      //       //   }
-      //       //   console.log(d)
-      //       // })
-      //     })
-      //   })
-
-
-      //  console.log("countryid" + countryid)
-
-
-
-
-      // textLayer.selectAll("text")
-      //   .data(topojson.object(world, world.objects.countries))
-      //   .enter()
-      //   .append(text)
-      //   .attr("class",function(d,i) {
-      //     condole.log(path.centroid(d))
-      //     return "countryid" + d.world.objects.countries
-      //   });
-
-
+        countries.transition().duration(500).attr("fill", function(dd){
+          if(dd.countryCode == selectedCountry){
+            return "orange";
+          }else{
+            return "black";
+          }
+        })
+// console.log(d.countryCode);
+})
+});
+}
 
 
 
@@ -383,89 +313,6 @@ function dragged(){
       });
     </script>
 
-
-
-
-
-
-
-    <!-- <script>
-    // example data from server
-    var series = [
-        ["BLR",75],["BLZ",43],["RUS",50],["RWA",88],["SRB",21],["TLS",43],
-        ["REU",21],["TKM",19],["TJK",60],["ROU",4],["TKL",44],["GNB",38],
-        ["GUM",67],["GTM",2],["SGS",95],["GRC",60],["GNQ",57],["GLP",53],
-        ["JPN",59],["GUY",24],["GGY",4],["GUF",21],["GEO",42],["GRD",65],
-        ["GBR",14],["GAB",47],["SLV",15],["GIN",19],["GMB",63],["GRL",56],
-        ["ERI",57],["MNE",93],["MDA",39],["MDG",71],["MAF",16],["MAR",8],
-        ["MCO",25],["UZB",81],["MMR",21],["MLI",95],["MAC",33],["MNG",93],
-        ["MHL",15],["MKD",52],["MUS",19],["MLT",69],["MWI",37],["MDV",44],
-        ["MTQ",13],["MNP",21],["MSR",89],["MRT",20],["IMN",72],["UGA",59],
-        ["TZA",62],["MYS",75],["MEX",80],["ISR",77],["FRA",54],["IOT",56],
-        ["SHN",91],["FIN",51],["FJI",22],["FLK",4],["FSM",69],["FRO",70],
-        ["NIC",66],["NLD",53],["NOR",7],["NAM",63],["VUT",15],["NCL",66],
-        ["NER",34],["NFK",33],["NGA",45],["NZL",96],["NPL",21],["NRU",13],
-        ["NIU",6],["COK",19],["XKX",32],["CIV",27],["CHE",65],["COL",64],
-        ["CHN",16],["CMR",70],["CHL",15],["CCK",85],["CAN",76],["COG",20],
-        ["CAF",93],["COD",36],["CZE",77],["CYP",65],["CXR",14],["CRI",31],
-        ["CUW",67],["CPV",63],["CUB",40],["SWZ",58],["SYR",96],["SXM",31]];
-
-
-    // Datamaps expect data in format:
-    // { "USA": { "fillColor": "#42a844", numberOfWhatever: 75},
-    //   "FRA": { "fillColor": "#8dc386", numberOfWhatever: 43 } }
-    var dataset = {};
-
-    // We need to colorize every country based on "numberOfWhatever"
-    // colors should be uniq for every value.
-    // For this purpose we create palette(using min/max series-value)
-    var onlyValues = series.map(function(obj){ return obj[1]; });
-    var minValue = Math.min.apply(null, onlyValues),
-            maxValue = Math.max.apply(null, onlyValues);
-
-    // create color palette function
-    // color can be whatever you wish
-    var paletteScale = d3.scale.linear()
-            .domain([minValue,maxValue])
-            .range(["#EFEFFF","#02386F"]); // blue color
-
-    // fill dataset in appropriate format
-    series.forEach(function(item){ //
-        // item example value ["USA", 70]
-        var iso = item[0],
-                value = item[1];
-        dataset[iso] = { numberOfThings: value, fillColor: paletteScale(value) };
-    });
-
-    // render map
-    new Datamap({
-        element: document.getElementById('map'),
-        projection: 'mercator', // big world map
-        // countries don't listed in dataset will be painted with this color
-        fills: { defaultFill: '#F5F5F5' },
-        data: dataset,
-        geographyConfig: {
-            borderColor: '#DEDEDE',
-            highlightBorderWidth: 2,
-            // don't change color on mouse hover
-            highlightFillColor: function(geo) {
-                return geo['fillColor'] || '#F5F5F5';
-            },
-            // only change border
-            highlightBorderColor: '#B7B7B7',
-            // show desired information in tooltip
-            popupTemplate: function(geo, data) {
-                // don't show tooltip if country don't present in dataset
-                if (!data) { return ; }
-                // tooltip content
-                return ['<div class="hoverinfo">',
-                    '<strong>', geo.properties.name, '</strong>',
-                    '<br>Count: <strong>', data.numberOfThings, '</strong>',
-                    '</div>'].join('');
-            }
-        }
-    });
-</script> -->
 
 
   <div class="wrapper">
